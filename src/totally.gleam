@@ -1,11 +1,11 @@
-import birl
 import gleam/bit_array
 import gleam/crypto
 import gleam/float
 import gleam/int
-import gleam/regex
+import gleam/regexp
 import gleam/result
 import gleam/string
+import gleam/time/timestamp
 import gleam/uri
 
 type Secret =
@@ -79,7 +79,12 @@ pub fn set_time(config: TOTPConfig, time: UNIXTimestamp) -> TOTPConfig {
 
 /// Sets the time for the TOTP configuration to the current time.
 pub fn set_time_now(config: TOTPConfig) -> TOTPConfig {
-  TOTPConfig(..config, time: birl.utc_now() |> birl.to_unix)
+  TOTPConfig(
+    ..config,
+    time: timestamp.system_time()
+      |> timestamp.to_unix_seconds()
+      |> float.truncate(),
+  )
 }
 
 /// Sets the refresh period in seconds for the TOTP configuration.
@@ -96,7 +101,12 @@ pub fn set_last_use(config: TOTPConfig, last_use: UNIXTimestamp) -> TOTPConfig {
 
 /// Sets the last use time for the TOTP configuration to the current time.
 pub fn set_last_use_now(config: TOTPConfig) -> TOTPConfig {
-  TOTPConfig(..config, last_use: birl.utc_now() |> birl.to_unix)
+  TOTPConfig(
+    ..config,
+    last_use: timestamp.system_time()
+      |> timestamp.to_unix_seconds()
+      |> float.truncate(),
+  )
 }
 
 /// Sets the digits for the TOTP configuration.
@@ -154,7 +164,7 @@ pub fn totp_from_config(config: TOTPConfig) -> OTP {
   |> int.remainder(rem_digits)
   |> result.unwrap(0)
   |> int.to_string
-  |> string.pad_left(config.digits, "0")
+  |> string.pad_start(config.digits, "0")
   |> OTP
 }
 
@@ -253,8 +263,8 @@ pub fn otpauth_uri_from_config(config: TOTPConfig) -> String {
 
 /// Checks if the string fits the otp format.
 fn valid_otp_code(otp: String) -> Bool {
-  let assert Ok(re) = regex.from_string("^[0-9]{6,8}$")
-  regex.check(re, otp)
+  let assert Ok(re) = regexp.from_string("^[0-9]{6,8}$")
+  regexp.check(re, otp)
 }
 
 /// Encodes the given BitArray to a base32 string.
